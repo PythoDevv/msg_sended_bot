@@ -28,12 +28,16 @@ def excel_to_users(data: bytes) -> list[dict]:
     users = []
     for row in ws.iter_rows(min_row=2, values_only=True):
         tg_id = row[0]
-        full_name = row[1]
-        username = row[2] if len(row) > 2 else None
-        if tg_id and full_name:
-            users.append({
-                "tg_id": int(tg_id),
-                "full_name": str(full_name),
-                "username": str(username) if username else None,
-            })
+        full_name = row[1] if len(row) > 1 else None
+        if not tg_id:
+            continue
+        try:
+            tg_id = int(str(tg_id).strip())
+        except (ValueError, TypeError):
+            continue
+        users.append({
+            "tg_id": tg_id,
+            "full_name": str(full_name).strip() if full_name else "",
+            "username": None,
+        })
     return users
