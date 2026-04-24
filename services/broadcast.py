@@ -108,6 +108,6 @@ async def broadcast(
             failed += 1
         except (TelegramBadRequest, Exception):
             failed += 1
-        await asyncio.sleep(0.05)
+        await asyncio.sleep(0.04)
 
     return success, failed

@@ -77,9 +77,11 @@ async def send_all(message: Message, state: FSMContext, bot: Bot, sender_bot: Bo
             msg=saved,
         )
 
-    await progress_msg.edit_text(
-        f"✅ Yuborish yakunlandi!\n"
-        f"✔️ Muvaffaqiyatli: <b>{success}</b>\n"
-        f"🚫 Bloklagan: <b>{failed}</b>",
+    await bot.edit_message_text(
+        chat_id=progress_msg.chat.id,
+        message_id=progress_msg.message_id,
+        text=f"✅ Yuborish yakunlandi!\n"
+             f"✔️ Muvaffaqiyatli: <b>{success}</b>\n"
+             f"🚫 Bloklagan: <b>{failed}</b>",
         parse_mode="HTML",
     )

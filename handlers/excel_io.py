@@ -1,4 +1,5 @@
 import io
+import logging
 from aiogram import Router, F, Bot
 from aiogram.types import Message, BufferedInputFile
 from database.base import async_session
@@ -7,6 +8,7 @@ from filters import IsAdmin
 from keyboards.reply import admin_menu_kb
 from services.excel import users_to_excel, excel_to_users
 
+logger = logging.getLogger(__name__)
 router = Router()
 router.message.filter(IsAdmin())
 
@@ -27,39 +29,38 @@ async def download_excel(message: Message, bot: Bot):
 
 @router.message(F.text == "📂 Excel yuklash")
 async def ask_excel_upload(message: Message):
-    await message.answer(
-        "Excel faylini yuboring (.xlsx formatda)\n"
-        "Ustunlar: tg_id | full_name | username",
-    )
+    await message.answer("Excel faylini yuboring (.xlsx formatda)\nUstunlar: A=tg_id | B=full_name")
 
 
 @router.message(F.document)
-async def handle_excel_upload(message: Message):
+async def handle_excel_upload(message: Message, bot: Bot):
     doc = message.document
-    if not doc.file_name.endswith(".xlsx"):
+    if not (doc.file_name or "").lower().endswith(".xlsx"):
         await message.answer("Faqat .xlsx fayl qabul qilinadi.")
         return
 
-    bot: Bot = message.bot
-    file = await bot.get_file(doc.file_id)
-    buf = io.BytesIO()
-    await bot.download_file(file.file_path, buf)
-    buf.seek(0)
-
     try:
+        buf = await bot.download(doc.file_id)
         users = excel_to_users(buf.read())
     except Exception as e:
-        await message.answer(f"Faylni o'qishda xato: {e}")
+        logger.exception("Excel o'qishda xato")
+        await message.answer(f"❌ Faylni o'qishda xato:\n<code>{e}</code>", parse_mode="HTML")
         return
 
     if not users:
-        await message.answer("Faylda foydalanuvchilar topilmadi.")
+        await message.answer("Faylda yaroqli foydalanuvchilar topilmadi.\nA ustunda tg_id, B ustunda ism bo'lishi kerak.")
         return
 
-    async with async_session() as session:
-        await upsert_users_bulk(session, users)
+    try:
+        async with async_session() as session:
+            await upsert_users_bulk(session, users)
+    except Exception as e:
+        logger.exception("DB ga yozishda xato")
+        await message.answer(f"❌ Bazaga yozishda xato:\n<code>{e}</code>", parse_mode="HTML")
+        return
 
     await message.answer(
-        f"✅ {len(users)} ta foydalanuvchi bazaga qo'shildi/yangilandi.",
+        f"✅ <b>{len(users)}</b> ta foydalanuvchi bazaga qo'shildi/yangilandi.",
+        parse_mode="HTML",
         reply_markup=admin_menu_kb(),
     )
